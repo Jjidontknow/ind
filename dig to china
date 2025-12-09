@@ -1,0 +1,353 @@
+--[[ 
+    VORTEX HUB - FULL EDITION
+    Key System: Work.ink
+    Language: English
+    Created by: Vortex
+    Updated: Added China & Spawn Teleports
+]]
+
+local KeyURL = "https://work.ink/28zX/key-system"
+local API_Endpoint = "https://work.ink/_api/v2/token/isValid/"
+
+-- Wait for game to load
+if not game:IsLoaded() then game.Loaded:Wait() end
+
+print("Vortex Hub Initiated...")
+
+-- [[ MAIN SCRIPT LOADING FUNCTION ]] --
+local function LoadMainScript()
+    print("Key Valid! Loading Vortex Hub...")
+    local Rayfield = loadstring(game:HttpGet('https://sirius.menu/rayfield'))()
+
+    local Window = Rayfield:CreateWindow({
+        Name = "Vortex Hub | Nuke & Eggs",
+        LoadingTitle = "Access Granted",
+        LoadingSubtitle = "Created by Vortex",
+        ConfigurationSaving = {
+            Enabled = true,
+            FolderName = "VortexHub",
+            FileName = "VortexConfig"
+        },
+        KeySystem = false, 
+    })
+
+    -- [[ TABS ]] --
+    local Tab = Window:CreateTab("Main Farm", 4483362458)
+    local TeleportTab = Window:CreateTab("Teleports", 4483362458) 
+
+    -- [[ GLOBAL VARIABLES ]] --
+    getgenv().AutoDrop = false
+    getgenv().DropDelay = 0.1
+    
+    getgenv().AutoInteract = false
+    getgenv().InteractRange = 15
+    getgenv().InteractDelay = 0.1
+
+    getgenv().AutoHatch = false
+    getgenv().HatchDelay = 0.5
+    getgenv().SelectedEgg = "BasicEgg" 
+
+    -- [[ DATA TABLES ]] --
+    local EggData = {
+        ["Basic Egg"] = {"BlastBox", "BasicEgg", false, 1},
+        ["Ruby Egg"]  = {"RubyWarhead", "RubyEgg", false, 1},
+        ["Golden Egg"] = {"NuclearCask", "GoldenEgg", false, 1}
+    }
+
+    -- [[ LOGIC: AUTO DROP ]] --
+    task.spawn(function()
+        while true do
+            if getgenv().AutoDrop then
+                pcall(function()
+                    local player = game:GetService("Players").LocalPlayer
+                    local character = player.Character or player.CharacterAdded:Wait()
+                    local giftSack = character:FindFirstChild("Gift Sack")
+                    
+                    if giftSack then
+                        local args = { [1] = giftSack.Gifts.Nuke, [2] = workspace.Houses.NeighborhoodHouses.SmallHouse }
+                        giftSack.BagHandling.DropPresent:FireServer(unpack(args))
+                    end
+                end)
+            end
+            if getgenv().DropDelay <= 0 then game:GetService("RunService").Heartbeat:Wait() else task.wait(getgenv().DropDelay) end
+        end
+    end)
+
+    -- [[ LOGIC: AUTO INTERACT ]] --
+    task.spawn(function()
+        while true do
+            if getgenv().AutoInteract then
+                pcall(function()
+                    local player = game.Players.LocalPlayer
+                    local character = player.Character
+                    if character and character:FindFirstChild("HumanoidRootPart") then
+                        for _, v in pairs(workspace:GetDescendants()) do
+                            if v:IsA("ProximityPrompt") and v.Enabled then
+                                local promptParent = v.Parent
+                                if promptParent and promptParent:IsA("BasePart") then
+                                    local dist = (character.HumanoidRootPart.Position - promptParent.Position).Magnitude
+                                    if dist <= getgenv().InteractRange then fireproximityprompt(v) end
+                                end
+                            end
+                        end
+                    end
+                end)
+            end
+            if getgenv().InteractDelay <= 0 then task.wait() else task.wait(getgenv().InteractDelay) end
+        end
+    end)
+
+    -- [[ LOGIC: AUTO HATCH ]] --
+    task.spawn(function()
+        while true do
+            if getgenv().AutoHatch then
+                pcall(function()
+                    local args = EggData[getgenv().SelectedEgg]
+                    if args then
+                        game:GetService("ReplicatedStorage").Pets.Events.Crates.OpenCrate:FireServer(unpack(args))
+                    end
+                end)
+            end
+            task.wait(getgenv().HatchDelay)
+        end
+    end)
+
+    -- [[ UI ELEMENTS: MAIN FARM ]] --
+
+    local SectionDrop = Tab:CreateSection(">> AUTO DROP (Delivery) <<")
+    Tab:CreateToggle({ Name = "Auto Drop Nuke", CurrentValue = false, Flag = "ToggleDrop", Callback = function(Value) getgenv().AutoDrop = Value end })
+    Tab:CreateSlider({ Name = "Drop Delay (0 = Insane)", Range = {0, 1}, Increment = 0.01, Suffix = "s", CurrentValue = 0.1, Flag = "SliderDropSpeed", Callback = function(Value) getgenv().DropDelay = Value end })
+
+    local SectionInteract = Tab:CreateSection(">> AUTO INTERACT (Pickup) <<")
+    Tab:CreateToggle({ Name = "Auto Interact (Press E)", CurrentValue = false, Flag = "ToggleInteract", Callback = function(Value) getgenv().AutoInteract = Value end })
+    Tab:CreateSlider({ Name = "Interact Delay", Range = {0, 1}, Increment = 0.01, Suffix = "s", CurrentValue = 0.1, Flag = "SliderInteractSpeed", Callback = function(Value) getgenv().InteractDelay = Value end })
+    Tab:CreateSlider({ Name = "Interact Range", Range = {5, 50}, Increment = 1, Suffix = "Studs", CurrentValue = 15, Flag = "SliderRange", Callback = function(Value) getgenv().InteractRange = Value end })
+
+    local SectionHatch = Tab:CreateSection(">> AUTO HATCH (Eggs) <<")
+    Tab:CreateDropdown({ Name = "Select Egg Type", Options = {"Basic Egg", "Ruby Egg", "Golden Egg"}, CurrentOption = "Basic Egg", Flag = "EggDropdown", Callback = function(Option) getgenv().SelectedEgg = Option[1] end })
+    Tab:CreateToggle({ Name = "Enable Auto Hatch", CurrentValue = false, Flag = "ToggleHatch", Callback = function(Value) getgenv().AutoHatch = Value end })
+    Tab:CreateSlider({ Name = "Hatch Speed", Range = {0.1, 2}, Increment = 0.1, Suffix = "s", CurrentValue = 0.5, Flag = "SliderHatchSpeed", Callback = function(Value) getgenv().HatchDelay = Value end })
+
+    -- [[ UI ELEMENTS: TELEPORTS ]] --
+    
+    local TPSection = TeleportTab:CreateSection("World Areas")
+
+    TeleportTab:CreateButton({
+        Name = "China Area",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(20.68, -2810.35, 113.26)
+            end)
+        end,
+    })
+
+    TeleportTab:CreateButton({
+        Name = "Spawn (High Zone)",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(65.14, 10196.56, 109.08)
+            end)
+        end,
+    })
+
+    local TPSectionShops = TeleportTab:CreateSection("Shops & Upgrades")
+
+    TeleportTab:CreateButton({
+        Name = "Start / Main Area",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(88.58, 10202.53, 210.95)
+            end)
+        end,
+    })
+
+    TeleportTab:CreateButton({
+        Name = "Housing Upgrade",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(63.70, 10202.28, 220.88)
+            end)
+        end,
+    })
+
+    TeleportTab:CreateButton({
+        Name = "Explosives Shop",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(32.03, 10202.47, 214.22)
+            end)
+        end,
+    })
+
+    TeleportTab:CreateButton({
+        Name = "Premium Shop",
+        Callback = function()
+            pcall(function()
+                game.Players.LocalPlayer.Character.HumanoidRootPart.CFrame = CFrame.new(9.84, 10202.51, 199.89)
+            end)
+        end,
+    })
+
+    Tab:CreateLabel("Created by Vortex")
+end
+
+---------------------------------------------------------------------------------
+-- [[ KEY SYSTEM GUI (ENGLISH) ]] --
+---------------------------------------------------------------------------------
+
+local Player = game.Players.LocalPlayer
+local PlayerGui = Player:WaitForChild("PlayerGui")
+
+if PlayerGui:FindFirstChild("VortexKeySystem") then
+    PlayerGui.VortexKeySystem:Destroy()
+end
+
+local ScreenGui = Instance.new("ScreenGui")
+local MainFrame = Instance.new("Frame")
+local Title = Instance.new("TextLabel")
+local KeyBox = Instance.new("TextBox")
+local VerifyButton = Instance.new("TextButton")
+local GetKeyButton = Instance.new("TextButton")
+local StatusLabel = Instance.new("TextLabel")
+
+ScreenGui.Name = "VortexKeySystem"
+ScreenGui.Parent = PlayerGui
+ScreenGui.ResetOnSpawn = false 
+ScreenGui.ZIndexBehavior = Enum.ZIndexBehavior.Sibling
+
+MainFrame.Name = "MainFrame"
+MainFrame.Parent = ScreenGui
+MainFrame.BackgroundColor3 = Color3.fromRGB(20, 20, 25)
+MainFrame.BorderSizePixel = 0
+MainFrame.Position = UDim2.new(0.5, -150, 0.5, -110)
+MainFrame.Size = UDim2.new(0, 300, 0, 230)
+MainFrame.Active = true
+MainFrame.Draggable = true
+
+local corner = Instance.new("UICorner")
+corner.CornerRadius = UDim.new(0, 10)
+corner.Parent = MainFrame
+
+-- Title
+Title.Parent = MainFrame
+Title.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+Title.BackgroundTransparency = 1.000
+Title.Position = UDim2.new(0, 0, 0.05, 0)
+Title.Size = UDim2.new(1, 0, 0, 30)
+Title.Font = Enum.Font.GothamBold
+Title.Text = "⚡ VORTEX HUB"
+Title.TextColor3 = Color3.fromRGB(255, 255, 255)
+Title.TextSize = 22.000
+
+-- Key Box
+KeyBox.Parent = MainFrame
+KeyBox.BackgroundColor3 = Color3.fromRGB(40, 40, 45)
+KeyBox.BorderSizePixel = 0
+KeyBox.Position = UDim2.new(0.1, 0, 0.25, 0)
+KeyBox.Size = UDim2.new(0.8, 0, 0, 45)
+KeyBox.Font = Enum.Font.Gotham
+KeyBox.PlaceholderText = "Paste Key Here..."
+KeyBox.Text = ""
+KeyBox.TextColor3 = Color3.fromRGB(255, 255, 255)
+KeyBox.TextSize = 14.000
+KeyBox.TextWrapped = true
+
+local kCorner = Instance.new("UICorner")
+kCorner.CornerRadius = UDim.new(0, 6)
+kCorner.Parent = KeyBox
+
+-- Verify Button
+VerifyButton.Parent = MainFrame
+VerifyButton.BackgroundColor3 = Color3.fromRGB(138, 43, 226) -- Vortex Purple
+VerifyButton.Position = UDim2.new(0.1, 0, 0.52, 0)
+VerifyButton.Size = UDim2.new(0.8, 0, 0, 40)
+VerifyButton.Font = Enum.Font.GothamBold
+VerifyButton.Text = "VERIFY KEY"
+VerifyButton.TextColor3 = Color3.fromRGB(255, 255, 255)
+VerifyButton.TextSize = 16.000
+
+local vCorner = Instance.new("UICorner")
+vCorner.CornerRadius = UDim.new(0, 6)
+vCorner.Parent = VerifyButton
+
+-- Get Key Button
+GetKeyButton.Parent = MainFrame
+GetKeyButton.BackgroundColor3 = Color3.fromRGB(60, 60, 70)
+GetKeyButton.Position = UDim2.new(0.1, 0, 0.75, 0)
+GetKeyButton.Size = UDim2.new(0.8, 0, 0, 25)
+GetKeyButton.Font = Enum.Font.Gotham
+GetKeyButton.Text = "Copy Key Link"
+GetKeyButton.TextColor3 = Color3.fromRGB(200, 200, 200)
+GetKeyButton.TextSize = 12.000
+
+local gCorner = Instance.new("UICorner")
+gCorner.CornerRadius = UDim.new(0, 6)
+gCorner.Parent = GetKeyButton
+
+-- Status Label
+StatusLabel.Parent = MainFrame
+StatusLabel.BackgroundColor3 = Color3.fromRGB(255, 255, 255)
+StatusLabel.BackgroundTransparency = 1.000
+StatusLabel.Position = UDim2.new(0, 0, 0.90, 0)
+StatusLabel.Size = UDim2.new(1, 0, 0, 15)
+StatusLabel.Font = Enum.Font.Gotham
+StatusLabel.Text = ""
+StatusLabel.TextColor3 = Color3.fromRGB(150, 150, 150)
+StatusLabel.TextSize = 11.000
+
+-- Button Logic
+
+GetKeyButton.MouseButton1Click:Connect(function()
+    setclipboard(KeyURL)
+    StatusLabel.Text = "Link Copied to Clipboard!"
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    task.wait(2)
+    StatusLabel.Text = ""
+end)
+
+VerifyButton.MouseButton1Click:Connect(function()
+    local inputKey = KeyBox.Text
+    inputKey = inputKey:gsub("^%s*(.-)%s*$", "%1") -- Trim spaces
+    
+    if inputKey == "" then
+        StatusLabel.Text = "Please enter a key!"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+        return
+    end
+    
+    StatusLabel.Text = "Checking Key..."
+    StatusLabel.TextColor3 = Color3.fromRGB(255, 255, 0)
+    
+    local url = API_Endpoint .. inputKey
+    
+    local success, response = pcall(function()
+        return game:HttpGet(url)
+    end)
+    
+    if success then
+        local validJson, data = pcall(function()
+            return game:GetService("HttpService"):JSONDecode(response)
+        end)
+        
+        if validJson and data then
+            if data.valid == true then
+                StatusLabel.Text = "KEY APPROVED!"
+                StatusLabel.TextColor3 = Color3.fromRGB(0, 255, 0)
+                VerifyButton.Text = "LOADING..."
+                task.wait(1)
+                
+                ScreenGui:Destroy()
+                LoadMainScript()
+            else
+                StatusLabel.Text = "INVALID OR EXPIRED KEY"
+                StatusLabel.TextColor3 = Color3.fromRGB(255, 50, 50)
+            end
+        else
+            StatusLabel.Text = "API ERROR"
+            StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+        end
+    else
+        StatusLabel.Text = "CONNECTION ERROR"
+        StatusLabel.TextColor3 = Color3.fromRGB(255, 0, 0)
+    end
+end)
